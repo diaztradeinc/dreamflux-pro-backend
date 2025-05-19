@@ -22,7 +22,7 @@ app.post('/generate', async (req, res) => {
 
   try {
     const response = await axios.post(
-      'https://api.modelslab.com/generate',
+      'https://api.modelslab.dev/generate',
       {
         prompt,
         negative_prompt,
