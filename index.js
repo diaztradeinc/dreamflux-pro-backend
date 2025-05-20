@@ -1,53 +1,41 @@
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-require('dotenv').config();
-
+const express = require("express");
+const axios = require("axios");
 const app = express();
-app.use(cors());
-app.use(express.json());
+const port = process.env.PORT || 8080;
 
-const MODELSLAB_API_KEY = process.env.MODELSLAB_API_KEY;
+require("dotenv").config();
+app.use(express.json({ limit: "10mb" }));
 
-app.post('/generate', async (req, res) => {
-  const {
-    prompt,
-    negative_prompt,
-    steps,
-    sampler,
-    cfg,
-    seed,
-    model
-  } = req.body;
+app.post("/api/generate", async (req, res) => {
+  const body = req.body;
+  const apiKey = process.env.MODELSLAB_API_KEY;
 
   try {
-    const response = await axios.post(
-      'https://api.modelslab.dev/generate',
-      {
-        prompt,
-        negative_prompt,
-        steps,
-        sampler,
-        cfg,
-        seed,
-        model
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${MODELSLAB_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    const response = await axios.post("https://api.modelslab.dev/v6/realtime/text2img", {
+      key: apiKey,
+      model: body.model,
+      prompt: body.prompt,
+      negative_prompt: body.negative_prompt,
+      steps: body.steps,
+      sampler: body.sampler,
+      cfg_scale: body.cfg,
+      seed: body.seed || null,
+      restore_faces: body.restore_faces || false,
+      hires_fix: body.hires_fix || false,
+      image: body.image || null
+    });
 
-    res.json({ image_url: response.data.image_url });
+    if (response.data && response.data.output && response.data.output[0]) {
+      res.status(200).json({ image_url: response.data.output[0] });
+    } else {
+      res.status(500).json({ error: "No image returned from ModelsLab", raw: response.data });
+    }
   } catch (err) {
-    console.error('ModelsLab Error:', err?.response?.data || err.message);
-    res.status(500).json({ error: 'Failed to generate image.' });
+    console.error("ModelsLab Error:", err.message || err);
+    res.status(500).json({ error: "Failed to call ModelsLab", detail: err.message });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`🚀 Server listening on port ${port}`);
 });
